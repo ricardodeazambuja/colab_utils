@@ -3,7 +3,7 @@ setup(
     name="Colab_Utils",
     version="0.1",
     packages=['colab_utils'],
-    install_requires=['ffmpeg-python', 'scipy', 'PIL', 'numpy'],
+    install_requires=['ffmpeg-python', 'scipy', 'pillow', 'numpy'],
 
     # metadata to display on PyPI
     author="Ricardo de Azambuja",
