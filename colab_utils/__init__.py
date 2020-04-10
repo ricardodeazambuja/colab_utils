@@ -357,7 +357,7 @@ def copy2clipboard(inputFile):
     });
   </script>
   """
-  div_id = str(uuid.uuid4())
+  div_id = str(uuid4())
 
   try:
     with open(inputFile, 'r') as file:
