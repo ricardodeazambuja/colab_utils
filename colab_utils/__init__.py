@@ -130,6 +130,8 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
 
       var x1,x2,y1,y2;
 
+      var clickNumber = 0;
+
       var boxes = new Array();
 
       var try_again = true;
@@ -137,37 +139,39 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
       while (try_again){
       await new Promise((resolve) => {
         canvas.onclick = () => { 
-            x1 = event.clientX;
-            y1 = event.clientY;
-            resolve();
+            if(clickNumber==0){
+                            x1 = event.clientX;
+                            y1 = event.clientY;
+                            clickNumber = 1;
+            }else if(clickNumber==1){
+                            x2 = event.clientX;
+                            y2 = event.clientY;
+                            ctx.strokeRect(x1, y1, x2-x1, y2-y1);
+                            clickNumber = 2;
             }
-            });
-
-      await new Promise((resolve) => {
-        canvas.onclick = () => { 
-            x2 = event.clientX;
-            y2 = event.clientY;
             resolve();
-            }
-            });
-
-      ctx.strokeRect(x1, y1, x2-x1, y2-y1);
-
-      await new Promise((resolve) => {
+            };
         ok_btn.onclick = () => {try_again=false; 
                                 boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
                                 if("%s" == "True"){
                                   tmp_div = document.getElementById("%s");
                                   tmp_div.remove();
                                 }
-                                resolve();};
-        add_btn.onclick = () => {try_again=true; 
-                                 boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
-                                 resolve();};
-        clr_btn.onclick = () => {try_again=true; 
+                                resolve();
+                                };
+        add_btn.onclick = () => {
+                                if (clickNumber==2){
+                                boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
+                                clickNumber = 0;
+                                }
+                                resolve();
+                                };
+        clr_btn.onclick = () => { 
                                  ctx.clearRect(0, 0, canvas.width, canvas.height); 
                                  boxes = new Array();
-                                 resolve();};
+                                 clickNumber = 0;
+                                 resolve();
+                                 };
         });
       
       }
