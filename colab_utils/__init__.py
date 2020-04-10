@@ -28,6 +28,7 @@ from IPython.display import display, Javascript, HTML, Audio
 from io import BytesIO
 from base64 import b64encode, b64decode
 from uuid import uuid4
+import requests
 
 from google.colab.output import eval_js
 from PIL import Image
@@ -328,3 +329,42 @@ def getAudio():
   sr, audio = wav_read(BytesIO(riff))
 
   return audio, sr
+
+
+def copy2clipboard(inputFile):
+  """Opens a file or URL and copies the content to the clipboard.
+  """
+
+  js = """
+  <script>
+  const init_elem = document.activeElement;
+  const tmp_div = document.createElement('div'); //document.getElementById("%s");
+  // Hack to avoid: DOMException: Document is not focused.
+  const el = document.createElement('textarea');
+  el.value = "Dummy text...";
+  el.setAttribute('readonly', '');
+  el.style.position = 'absolute';
+  el.style.left = '-9999px';
+  document.body.appendChild(el);
+  el.select();
+  const inputTXT = atob("%s");
+  navigator.clipboard.writeText(inputTXT).then(nothing=()=>{
+    tmp_div.remove();
+    });
+  </script>
+  """
+  div_id = str(uuid.uuid4())
+
+  try:
+    with open(inputFile, 'r') as file:
+        data = file.read()
+        data = b64encode(bytes(data, 'utf-8')).decode("utf-8")
+  except FileNotFoundError:
+      try:
+          request = requests.get(inputFile)
+          data = request.text
+          data = b64encode(bytes(data, 'utf-8')).decode("utf-8")
+      except (ConnectionError, requests.exceptions.MissingSchema) as e: 
+          print('File / URL site does not exist')
+          
+  display(HTML(js % (div_id, data)))
