@@ -27,6 +27,7 @@ contained or linked from here.
 from IPython.display import display, Javascript, HTML, Audio
 from io import BytesIO
 from base64 import b64encode, b64decode
+from uuid import uuid4
 
 from google.colab.output import eval_js
 from PIL import Image
@@ -81,7 +82,7 @@ def webcam2numpy(quality=0.8, size=(800,600)):
 
   
 
-def labelImage(inputImg, imgformat='PNG'):
+def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
   """Opens an image, record mouse clicks (boxes) and labels.
 
   Returns
@@ -91,11 +92,13 @@ def labelImage(inputImg, imgformat='PNG'):
 
   """
 
-  js = Javascript('''
+  div_id = str(uuid4())
+
+  JS_SRC = """
     async function label_image() {
       const image  = document.getElementById("inputImage");
       var [w,h] = [image.width, image.height];
-      const div = document.getElementById("mainDiv");
+      const div = document.getElementById("%s");
       const ok_btn = document.createElement('button');
       ok_btn.textContent = 'Finish';
       const add_btn = document.createElement('button');
@@ -152,6 +155,10 @@ def labelImage(inputImg, imgformat='PNG'):
       await new Promise((resolve) => {
         ok_btn.onclick = () => {try_again=false; 
                                 boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
+                                if("%s" == "True"){
+                                  tmp_div = document.getElementById("%s");
+                                  tmp_div.remove();
+                                }
                                 resolve();};
         add_btn.onclick = () => {try_again=true; 
                                  boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
@@ -163,10 +170,10 @@ def labelImage(inputImg, imgformat='PNG'):
         });
       
       }
-
+      
       return boxes;
     }
-    ''')
+    """ % (div_id, str(deleteAfter), div_id)
   
   imageBuffer = BytesIO()
 
@@ -186,13 +193,13 @@ def labelImage(inputImg, imgformat='PNG'):
     raise "Wrong image format!"
 
   HTML_SRC ="""
-  <div id="mainDiv">
+  <div id="%s">
   <img id="inputImage" src="%s"/>
   <br>
   </div>
-  """
-  display(HTML(HTML_SRC % (str_data)))
-  display(js)
+  """ % (div_id, str_data)
+  display(HTML(HTML_SRC))
+  display(Javascript(JS_SRC))
   data = eval_js('label_image()')
   return data
 
