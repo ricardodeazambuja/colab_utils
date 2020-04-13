@@ -339,25 +339,23 @@ def copy2clipboard(inputFile):
   """Opens a file or URL and copies the content to the clipboard.
   """
 
-  js = """
+  js1 = """
   <script>
-  const init_elem = document.activeElement;
-  const tmp_div = document.createElement('div'); //document.getElementById("%s");
-  // Hack to avoid: DOMException: Document is not focused.
-  const el = document.createElement('textarea');
-  el.value = "Dummy text...";
-  el.setAttribute('readonly', '');
-  el.style.position = 'absolute';
-  el.style.left = '-9999px';
-  document.body.appendChild(el);
-  el.select();
+  // Hack to avoid "DOMException: Document is not focused"
+  const tmp_div = document.createElement('div');
+  const tmp_button = document.createElement('button');
+  tmp_button.textContent = 'Copy2Clipboard';
+  document.body.appendChild(tmp_div);
+  tmp_div.appendChild(tmp_button);
   const inputTXT = atob("%s");
-  navigator.clipboard.writeText(inputTXT).then(nothing=()=>{
+
+  async function copy2clipboard(){
+    await new Promise((resolve) => tmp_button.onclick = resolve);
+    tmp_button.focus();
+    navigator.clipboard.writeText(inputTXT);
     tmp_div.remove();
-    });
-  </script>
-  """
-  div_id = str(uuid4())
+  }
+  </script>  """
 
   try:
     with open(inputFile, 'r') as file:
@@ -370,5 +368,7 @@ def copy2clipboard(inputFile):
           data = b64encode(bytes(data, 'utf-8')).decode("utf-8")
       except (ConnectionError, requests.exceptions.MissingSchema) as e: 
           print('File / URL site does not exist')
+          print(e)
           
-  display(HTML(js % (div_id, data)))
+  display(HTML(js1 % data))
+  eval_js("copy2clipboard()")
