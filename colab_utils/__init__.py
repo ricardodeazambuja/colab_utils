@@ -340,22 +340,28 @@ def copy2clipboard(inputFile):
   """
 
   js1 = """
-  <script>
-  // Hack to avoid "DOMException: Document is not focused"
   const tmp_div = document.createElement('div');
   const tmp_button = document.createElement('button');
   tmp_button.textContent = 'Copy2Clipboard';
   document.body.appendChild(tmp_div);
   tmp_div.appendChild(tmp_button);
   const inputTXT = atob("%s");
+  const el = document.createElement('textarea');
+  el.style.position = 'absolute';
+  el.style.left = '-9999px';
+  el.value = inputTXT;
+  tmp_div.appendChild(el);
+
 
   async function copy2clipboard(){
-    await new Promise((resolve) => tmp_button.onclick = resolve);
     tmp_button.focus();
-    navigator.clipboard.writeText(inputTXT);
+    await new Promise((resolve) => tmp_button.onclick = resolve);
+    el.select();
+    el.focus();
+    document.execCommand('copy');
+    el.remove()
     tmp_div.remove();
-  }
-  </script>  """
+  }"""
 
   try:
     with open(inputFile, 'r') as file:
@@ -370,8 +376,8 @@ def copy2clipboard(inputFile):
           print('File / URL site does not exist')
           print(e)
           
-  display(HTML(js1 % data))
-  eval_js("copy2clipboard()")
+  display(Javascript(js1 % data))
+  display(Javascript("copy2clipboard()"))
 
 
 def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=None):
