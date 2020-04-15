@@ -372,3 +372,70 @@ def copy2clipboard(inputFile):
           
   display(HTML(js1 % data))
   eval_js("copy2clipboard()")
+
+
+def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=None):
+  """Shows an image using the same named window.
+  """
+
+  JS_SRC = """
+    function testImage(windowName) {
+      var image  = document.getElementById(windowName);
+
+      if (typeof(image) != 'undefined' && image != null){
+        return 1;
+      } else {
+        return 0;
+      }
+    }
+      
+    function imwrite(newSRC, windowName) {
+      var image  = document.getElementById(windowName);
+
+      if (typeof(image) != 'undefined' && image != null){
+        console.log("image was NOT null");
+        image.src = newSRC;
+      } else {
+        console.log("image was null");
+        const image = document.createElement("image");
+        image.id = windowName;
+        document.body.appendChild(image);
+      }
+
+      //new Promise((resolve) => image.complete = resolve);
+
+    }
+    """
+  
+  imageBuffer = BytesIO()
+
+  if type(inputImg) == str:
+    Image.open(inputImg).save(imageBuffer, format=imgformat)
+  elif type(inputImg) == np.ndarray:
+    Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
+  elif type(inputImg) == PIL.Image.Image:
+    inputImg.save(imageBuffer, format=imgformat)
+
+  imgBase64 = b64encode(imageBuffer.getvalue())
+  if imgformat == 'PNG':
+    str_data = "data:image/png;base64," + imgBase64.decode(encoding="utf-8")
+  elif imgformat == 'JPEG':
+    str_data = "data:image/jpeg;base64," + imgBase64.decode(encoding="utf-8")
+  else:
+    raise "Wrong image format!"
+
+  display(Javascript(JS_SRC))
+
+  if not eval_js('testImage("%s")' % windowName):
+    HTML_SRC ="""
+    <div id="%s_div">
+    <img id="%s" src="%s" """ % (windowName, windowName, str_data)
+    if width: 
+      HTML_SRC += 'width="%s" ' % str(width)
+    if height:
+      HTML_SRC += 'height="%s" ' % str(height)
+    HTML_SRC += "/><br></div>"
+    
+    display(HTML(HTML_SRC))
+
+  display(Javascript("imwrite('%s','%s')" % (str_data, windowName)))
