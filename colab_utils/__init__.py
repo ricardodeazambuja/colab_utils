@@ -186,7 +186,7 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
     Image.open(inputImg).save(imageBuffer, format=imgformat)
   elif type(inputImg) == np.ndarray:
     Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
-  elif type(inputImg) == PIL.Image.Image:
+  elif type(inputImg) == Image.Image:
     inputImg.save(imageBuffer, format=imgformat)
 
   imgBase64 = b64encode(imageBuffer.getvalue())
@@ -419,7 +419,7 @@ def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=N
     Image.open(inputImg).save(imageBuffer, format=imgformat)
   elif type(inputImg) == np.ndarray:
     Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
-  elif type(inputImg) == PIL.Image.Image:
+  elif type(inputImg) == Image.Image:
     inputImg.save(imageBuffer, format=imgformat)
 
   imgBase64 = b64encode(imageBuffer.getvalue())
