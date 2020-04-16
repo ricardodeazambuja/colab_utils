@@ -29,6 +29,7 @@ from io import BytesIO
 from base64 import b64encode, b64decode
 from uuid import uuid4
 import requests
+from time import sleep
 
 from google.colab.output import eval_js
 from PIL import Image
@@ -445,3 +446,89 @@ def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=N
     display(HTML(HTML_SRC))
 
   display(Javascript("imwrite('%s','%s')" % (str_data, windowName)))
+
+
+
+def videoGrabber(quality=0.8, size=(800,600), init_delay=100, showVideo=True):
+  """Returns a video grabber object that saves images from your webcam into a PIL.Image object.
+  Caveat: the returned video controller object can only be used inside the SAME cell because of sandboxing.
+  
+  Usage example:
+    vid = videoGrabber()
+    img_list = []
+    for i in range(10):
+      img_list.append(vid(10))
+    vid(stop=True)
+  """
+
+  VIDEO_HTML = """
+  <div id="video_container">
+    <video autoplay
+    width=%d height=%d></video>
+  </div>
+
+  <script>
+  var video_div = document.getElementById("video_container");
+  if(!%s){
+    video_div.style.position = 'absolute';
+    video_div.style.left = '-9999px';
+  }
+  var video = document.querySelector('video');
+  var canvas = document.createElement('canvas');
+  canvas.id = "canvas_container";
+
+  var video_ready = false;
+
+  const nav = navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      video.srcObject = stream;
+      sleep(%f).then(() => video_ready = true);
+      });
+
+  // https://stackoverflow.com/a/951057
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+
+  function getData(ms){
+    if(video_ready){
+    return new Promise(resolve=>{
+      sleep(ms).then(() => {
+        var [w,h] = [video.offsetWidth, video.offsetHeight];
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', %f));
+        });
+      })
+    }
+  }
+
+
+  function stopVideo(){
+    video.srcObject.getVideoTracks()[0].stop();
+    canvas.remove();
+    video.remove();
+    video_div.remove();
+  }
+
+  </script>
+  """
+  showVideo = "true" if showVideo else "false"
+  handle = display(HTML(VIDEO_HTML % (size[0],size[1],showVideo,init_delay,quality)), display_id='videoHTML')
+
+  def videoContr(ms=10, stop=False):
+    if not stop:
+      while True:
+        data = eval_js("getData(%s)" % str(ms))        
+        if data:
+          binary = b64decode(data.split(',')[1])
+          f = BytesIO(binary)
+          return Image.open(f)
+        else:
+          sleep(0.1)
+    else:
+      eval_js("stopVideo()")
+  
+  return videoContr
