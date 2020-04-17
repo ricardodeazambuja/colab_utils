@@ -195,12 +195,13 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True, scale = 1.0, line_co
   imageBuffer = BytesIO()
 
   if type(inputImg) == str:
-    img=Image.open(inputImg)
+    img = Image.open(inputImg)
     w,h = img.size
     img.save(imageBuffer, format=imgformat)
   elif type(inputImg) == np.ndarray:
-    w,h = Image(inputImg).size
-    Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
+    img = Image.fromarray(inputImg)
+    w,h = img.size
+    img.save(imageBuffer, format=imgformat)
   elif "PIL" in str(type(inputImg)):
     w,h,_ = inputImg.size
     inputImg.save(imageBuffer, format=imgformat)
