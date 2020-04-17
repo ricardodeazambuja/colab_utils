@@ -247,7 +247,7 @@ def showAnnotations(img, annotations, color="green", line_width=2):
     text = annotation[1]
     annotation = annotation[0]
     draw.rectangle([annotation[0]*w, annotation[1]*h, (annotation[0]+annotation[2])*w, (annotation[1]+annotation[3])*h], fill=None, outline=color, width=line_width)
-    draw.text((annotation[0]*w+2, annotation[1]*h+2), str(text), fill=color)
+    draw.text((min((annotation[0],annotation[0]+annotation[2]))*w+2, min((annotation[1],annotation[1]+annotation[3]))*h+2), str(text), fill=color)
   
   return img
 
