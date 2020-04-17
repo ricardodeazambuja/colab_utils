@@ -32,7 +32,7 @@ import requests
 from time import sleep
 
 from google.colab.output import eval_js
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 from scipy.io.wavfile import read as wav_read
 import ffmpeg
