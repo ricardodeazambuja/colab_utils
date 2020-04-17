@@ -84,7 +84,7 @@ def webcam2numpy(quality=0.8, size=(800,600)):
 
   
 
-def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
+def labelImage(inputImg, imgformat='PNG', deleteAfter=True, scale = 1.0, line_color="green"):
   """Opens an image, record mouse clicks (boxes) and labels.
 
   Returns
@@ -94,13 +94,14 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
 
   """
 
-  div_id = str(uuid4())
-
   JS_SRC = """
-    async function label_image() {
+    async function label_image(scale) {
       const image  = document.getElementById("inputImage");
-      var [w,h] = [image.width, image.height];
-      const div = document.getElementById("%s");
+      const w = image.width;
+      const h = image.height;
+
+      const image_div = document.getElementById("image_div");
+
       const ok_btn = document.createElement('button');
       ok_btn.textContent = 'Finish';
       const add_btn = document.createElement('button');
@@ -114,18 +115,25 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
       canvas.width = w;
       canvas.height = h;
 
-      var ctx = canvas.getContext('2d');      
+      var ctx = canvas.getContext('2d');
       canvas.style.position = 'absolute';
       canvas.style.left = '0px';
       canvas.style.top = '0px';
-      canvas.style.z_index = 10;
+      canvas.style.z_index = 1000;
+      canvas.style.border = 0;
+      canvas.style.padding = 0;
+      canvas.style.margin = 0;
 
-      div.appendChild(canvas);
-      div.appendChild(textbox);
-      
-      div.appendChild(add_btn);
-      div.appendChild(ok_btn);
-      div.appendChild(clr_btn);
+      //ctx.fillStyle = "blue";
+      //ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      image_div.appendChild(canvas);
+
+      const interface_div = document.getElementById("interface_div");
+      interface_div.appendChild(textbox);
+      interface_div.appendChild(add_btn);
+      interface_div.appendChild(ok_btn);
+      interface_div.appendChild(clr_btn);
 
       textbox.width = 100;
 
@@ -139,7 +147,8 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
       
       while (try_again){
       await new Promise((resolve) => {
-        canvas.onclick = () => { 
+        canvas.onclick = () => {
+            console.log("X:"+event.clientX+" Y:"+event.clientY); 
             if(clickNumber==0){
                             x1 = event.clientX;
                             y1 = event.clientY;
@@ -147,22 +156,24 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
             }else if(clickNumber==1){
                             x2 = event.clientX;
                             y2 = event.clientY;
+                            ctx.lineWidth = 5;
+                            ctx.strokeStyle = '%s';
                             ctx.strokeRect(x1, y1, x2-x1, y2-y1);
                             clickNumber = 2;
             }
             resolve();
             };
         ok_btn.onclick = () => {try_again=false; 
-                                boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
+                                boxes.push([[x1/w, y1/h, (x2-x1)/w, (y2-y1)/h],textbox.value]);
                                 if("%s" == "True"){
-                                  tmp_div = document.getElementById("%s");
+                                  tmp_div = document.getElementById("main_div");
                                   tmp_div.remove();
                                 }
                                 resolve();
                                 };
         add_btn.onclick = () => {
                                 if (clickNumber==2){
-                                boxes.push([[x1, y1, x2-x1, y2-y1],textbox.value]);
+                                boxes.push([[x1/w, y1/h, (x2-x1)/w, (y2-y1)/h],textbox.value]);
                                 clickNumber = 0;
                                 }
                                 resolve();
@@ -179,15 +190,19 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
       
       return boxes;
     }
-    """ % (div_id, str(deleteAfter), div_id)
+    """ % (line_color,str(deleteAfter))
   
   imageBuffer = BytesIO()
 
   if type(inputImg) == str:
-    Image.open(inputImg).save(imageBuffer, format=imgformat)
+    img=Image.open(inputImg)
+    w,h = img.size
+    img.save(imageBuffer, format=imgformat)
   elif type(inputImg) == np.ndarray:
+    w,h = Image(inputImg).size
     Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
   elif "PIL" in str(type(inputImg)):
+    w,h,_ = inputImg.size
     inputImg.save(imageBuffer, format=imgformat)
 
   imgBase64 = b64encode(imageBuffer.getvalue())
@@ -198,15 +213,17 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True):
   else:
     raise "Wrong image format!"
 
-  HTML_SRC ="""
-  <div id="%s">
-  <img id="inputImage" src="%s"/>
-  <br>
+  HTML_SRC = f"""
+  <div id="main_div" style="padding:0; margin:0; border:0; height:{h*scale+50}px; width:{w*scale}px;">
+  <div id="image_div" style="padding:0; margin:0; border:0; height:{h*scale}px; width:{w*scale}px; position:absolute; top:0px; left:0px;">
+  <img id="inputImage" src="{str_data}" style="padding:0; margin:0; border:0; position:absolute; top:0px; left:0px;" height={h*scale}px; width={w*scale}px;/>
   </div>
-  """ % (div_id, str_data)
+  <div id="interface_div" style="padding:0; margin:0; border:0; position:absolute; top:{h*scale}px; left:0px;"></div>
+  </div>
+  """
   display(HTML(HTML_SRC))
   display(Javascript(JS_SRC))
-  data = eval_js('label_image()')
+  data = eval_js(f'label_image({float(scale)})')
   return data
 
 
