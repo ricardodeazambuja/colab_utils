@@ -209,8 +209,10 @@ def labelImage(inputImg, imgformat='PNG', deleteAfter=True, scale = 1.0, line_co
   imgBase64 = b64encode(imageBuffer.getvalue())
   if imgformat == 'PNG':
     str_data = "data:image/png;base64," + imgBase64.decode(encoding="utf-8")
-  elif imgformat == 'JPEG':
+  elif imgformat == 'JPEG' or imgformat == 'JPG':
     str_data = "data:image/jpeg;base64," + imgBase64.decode(encoding="utf-8")
+  elif imgformat == 'GIF':
+    str_data = "data:image/gif;base64," + imgBase64.decode(encoding="utf-8")
   else:
     raise "Wrong image format!"
 
@@ -459,7 +461,7 @@ def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=N
   imageBuffer = BytesIO()
 
   if type(inputImg) == str:
-    Image.open(inputImg).save(imageBuffer, format=imgformat)
+    Image.open(inputImg).save(imageBuffer, format=imgformat, save_all=True)
   elif type(inputImg) == np.ndarray:
     Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
   elif "PIL" in str(type(inputImg)):
@@ -468,8 +470,10 @@ def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=N
   imgBase64 = b64encode(imageBuffer.getvalue())
   if imgformat == 'PNG':
     str_data = "data:image/png;base64," + imgBase64.decode(encoding="utf-8")
-  elif imgformat == 'JPEG':
+  elif imgformat == 'JPEG' or imgformat == 'JPG':
     str_data = "data:image/jpeg;base64," + imgBase64.decode(encoding="utf-8")
+  elif imgformat == 'GIF':
+    str_data = "data:image/gif;base64," + imgBase64.decode(encoding="utf-8")
   else:
     raise "Wrong image format!"
 
