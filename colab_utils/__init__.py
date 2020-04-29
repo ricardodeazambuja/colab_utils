@@ -461,7 +461,10 @@ def imshow(inputImg, imgformat="PNG", windowName="imwrite", width=None, height=N
   imageBuffer = BytesIO()
 
   if type(inputImg) == str:
-    Image.open(inputImg).save(imageBuffer, format=imgformat, save_all=True)
+    save_all = False
+    if imgformat == 'GIF':
+      save_all = True
+    Image.open(inputImg).save(imageBuffer, format=imgformat, save_all=save_all)
   elif type(inputImg) == np.ndarray:
     Image.fromarray(inputImg).save(imageBuffer, format=imgformat)
   elif "PIL" in str(type(inputImg)):
