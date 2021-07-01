@@ -663,7 +663,7 @@ def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
 
 
 
-def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1]):
+def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1], seed=42):
   """Read and split a dataset (TFLite Model Maker format) according
   to the ratios
   """
@@ -680,7 +680,8 @@ def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1]):
 
   split_ratios = [round(img_idx*i) for i in train_val_test_ratios]
   shuffled = np.arange(img_idx)
-  np.random.shuffle(shuffled)
+  rnd = np.random.RandomState(seed)
+  rnd.shuffle(shuffled)
 
   train = shuffled[:split_ratios[0]]
   val = shuffled[split_ratios[0]:split_ratios[0]+split_ratios[1]]
