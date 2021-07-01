@@ -611,7 +611,7 @@ def cocojson2modelmakercsv(cocojsonfilename, csvfilename):
     csv_lines.append(f"UNASSIGNED,{path},{label},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,")
 
   with open(csvfilename,"w") as file:
-    file.write("\n".join(csv_lines))
+    file.write("\n".join(csv_lines)+"\n")
 
 
 def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
@@ -628,7 +628,9 @@ def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
   last_url = ""
   img_name = ""
   new_ds = ""
-  for l in ds.splitlines():
+  for i,l in enumerate(ds.splitlines()):
+    url_fail = True
+    print(f"Processing annotation #{i+1}")
     r = l.split(',')
     url = r[1]
 
@@ -647,20 +649,22 @@ def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
           img = Image.open(BytesIO(response.content))
           img.save(img_name)
           print(f"Image {img_name} saved!")
+          url_fail = False
         else:
           print(f"URL {url} failed?!? {response.status_code}")
-          img_i -= 1
     else:
       print(f"Image {img_name} already exists!")
+      url_fail = False
 
     last_url = url
 
     r[1] = img_name
-    new_ds += ",".join(r) + "\n"
+
+    if not url_fail:
+      new_ds += ",".join(r) + "\n"
 
   with open(join(newcsvfilename),"w") as f:
     f.write(new_ds)
-
 
 
 def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1], seed=42):
