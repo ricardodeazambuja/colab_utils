@@ -604,9 +604,9 @@ def cocojson2modelmakercsv(cocojsonfilename, csvfilename):
     width = img['width']
     bbox = ann['bbox']
     x_min = bbox[0]/width
-    x_max = bbox[2]/width
+    x_max = (bbox[0]+bbox[2])/width
     y_min = bbox[1]/height
-    y_max = bbox[3]/height
+    y_max = (bbox[1]+bbox[3])/height
 
     csv_lines.append(f"UNASSIGNED,{path},{label},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,")
 
