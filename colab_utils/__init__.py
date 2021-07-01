@@ -617,6 +617,7 @@ def cocojson2modelmakercsv(cocojsonfilename, csvfilename):
 def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
   """Download images from the TFLite Model Maker CSV
   and generate a new CSV file
+  https://cloud.google.com/vision/automl/object-detection/docs/csv-format
   """
   if img_path:
     if not isdir(img_path):
@@ -670,6 +671,7 @@ def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
 def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1], seed=42):
   """Read and split a dataset (TFLite Model Maker format) according
   to the ratios
+  https://cloud.google.com/vision/automl/object-detection/docs/csv-format
   """
   with open(csvfilename,"r") as file:
     ds = file.read()
@@ -758,7 +760,9 @@ def rnd_translate(img, box, seed=42):
 
 
 def augment_dataset(csvfilename, increaseby=3, seed=42):
-  """Augment the dataset
+  """Augment a dataset based on CSV format used by 
+  TFLite Model Maker Object Detector
+  https://cloud.google.com/vision/automl/object-detection/docs/csv-format
   """
 
   def augment(img, box, filename, extension, basename, ds_augmented, seed, increaseby):
