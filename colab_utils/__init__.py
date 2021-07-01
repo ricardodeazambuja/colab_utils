@@ -30,6 +30,9 @@ from base64 import b64encode, b64decode
 from uuid import uuid4
 import requests
 from time import sleep
+import json
+from os.path import join, isdir, isfile
+from os import mkdir
 
 from google.colab.output import eval_js
 from PIL import Image, ImageDraw
@@ -581,3 +584,127 @@ def videoGrabber(quality=0.8, size=(800,600), init_delay=100, showVideo=True):
       eval_js("stopVideo()")
   
   return videoContr
+
+
+def cocojson2modelmakercsv(cocojsonfilename, csvfilename):
+  """Convert COCO json annotations saved using VGG Via Annotator into
+  TFLite Model Maker CSV format
+  https://www.robots.ox.ac.uk/~vgg/software/via/via.html
+  https://cloud.google.com/vision/automl/object-detection/docs/csv-format
+  """
+  with open(cocojsonfilename) as file:
+    annot = json.load(file)
+
+  csv_lines = [] # set,path,label,x_min,y_min,,,x_max,y_max,,
+  for ann in annot['annotations']:
+    label = annot['categories'][ann['category_id']-1]['name']
+    img = annot['images'][ann['image_id']-1]
+    path = img['coco_url']
+    height = img['height']
+    width = img['width']
+    bbox = ann['bbox']
+    x_min = bbox[0]/width
+    x_max = bbox[2]/width
+    y_min = bbox[1]/height
+    y_max = bbox[3]/height
+
+    csv_lines.append(f"UNASSIGNED,{path},{label},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,")
+
+  with open(csvfilename,"w") as file:
+    file.write("\n".join(csv_lines))
+
+
+def saveimgslocally(csvfilename, newcsvfilename, img_path=""):
+  """Download images from the TFLite Model Maker CSV
+  and generate a new CSV file
+  """
+  if img_path:
+    if not isdir(img_path):
+      mkdir(img_path)
+  with open(csvfilename,"r") as file:
+    ds = file.read()
+
+  img_i = 0
+  last_url = ""
+  img_name = ""
+  new_ds = ""
+  for l in ds.splitlines():
+    r = l.split(',')
+    url = r[1]
+
+    if url != last_url:
+      img_i += 1
+      img_name = join(img_path,f"image_{img_i}.jpg")
+
+    if not isfile(img_name):
+      if url != last_url:
+        print(f"Downloading {url}")
+        try: 
+          response = requests.get(url, timeout=2)
+        except requests.exceptions.Timeout:
+          response.status_code = -1
+        if response.status_code == 200:
+          img = Image.open(BytesIO(response.content))
+          img.save(img_name)
+          print(f"Image {img_name} saved!")
+        else:
+          print(f"URL {url} failed?!? {response.status_code}")
+          img_i -= 1
+    else:
+      print(f"Image {img_name} already exists!")
+
+    last_url = url
+
+    r[1] = img_name
+    new_ds += ",".join(r) + "\n"
+
+  with open(join(newcsvfilename),"w") as f:
+    f.write(new_ds)
+
+
+
+def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1]):
+  """Read and split a dataset (TFLite Model Maker format) according
+  to the ratios
+  """
+  with open(csvfilename,"r") as file:
+    ds = file.read()
+  
+  last_img = ""
+  img_idx = 0
+  for l in ds.splitlines():
+    r = l.split(',')
+    if last_img != r[1]:
+      last_img = r[1]
+      img_idx += 1
+
+  split_ratios = [round(img_idx*i) for i in train_val_test_ratios]
+  shuffled = np.arange(img_idx)
+  np.random.shuffle(shuffled)
+
+  train = shuffled[:split_ratios[0]]
+  val = shuffled[split_ratios[0]:split_ratios[0]+split_ratios[1]]
+  test = shuffled[split_ratios[0]+split_ratios[1]:]
+
+  new_ds = ""
+  last_img = ""
+  set_type = ""
+  img_idx = 0
+  for l in ds.splitlines():
+    r = l.split(',')
+    if last_img != r[1]:
+      if img_idx in train:
+        set_type = "TRAIN"
+      elif img_idx in val:
+        set_type = "VALIDATION"
+      elif img_idx in test:
+        set_type = "TEST"
+      else:
+        set_type = "WTF"
+      last_img = r[1]
+      img_idx += 1
+    r[0] = set_type
+    new_ds += ",".join(r) + "\n"
+
+  with open(join(csvfilename),"w") as f:
+    f.write(new_ds)
