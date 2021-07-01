@@ -35,7 +35,7 @@ from os.path import join, isdir, isfile
 from os import mkdir
 
 from google.colab.output import eval_js
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps, ImageEnhance
 import numpy as np
 from scipy.io.wavfile import read as wav_read
 import ffmpeg
@@ -713,3 +713,102 @@ def splitdataset(csvfilename, train_val_test_ratios=[0.8,0.1,0.1], seed=42):
 
   with open(join(csvfilename),"w") as f:
     f.write(new_ds)
+
+    
+def drawbox(img, box):
+  draw = ImageDraw.Draw(img)
+  draw.rectangle([int(box[0]*img.size[0]),
+                  int(box[1]*img.size[1]),
+                  int(box[2]*img.size[0]),
+                  int(box[3]*img.size[1])])
+  return img
+
+def flip(img, box):
+  [x_min, y_min, x_max, y_max] = box
+  img = ImageOps.flip(img)
+  return img, [x_min, min([1-y_min,1-y_max]), x_max, max([1-y_min,1-y_max])]
+
+def mirror(img, box):
+  [x_min, y_min, x_max, y_max] = box
+  img = ImageOps.mirror(img)
+  return img, [min([1-x_min,1-x_max]), y_min, max([1-x_min,1-x_max]), y_max]
+
+def flip_mirror(img, box):
+  img, box = flip(img, box)
+  img, box = mirror(img, box)
+  return img, box
+
+def rnd_solarize(img, seed=42):
+  rnd = np.random.RandomState(seed)
+  return ImageOps.solarize(img, threshold=rnd.randint(0,200,1))
+
+def rnd_brightness(img, seed=42):
+  rnd = np.random.RandomState(seed)
+  enhancer = ImageEnhance.Brightness(img)
+  return enhancer.enhance(rnd.rand())
+
+def rnd_translate(img, box, seed=42):
+  [x_min, y_min, x_max, y_max] = box
+  rnd = np.random.RandomState(seed)
+  x = rnd.randint(-min([x_min,x_max])*img.size[0],img.size[0]-max([x_min,x_max])*img.size[0],1)[0]
+  y = rnd.randint(-min([y_min,y_max])*img.size[1],img.size[1]-max([y_min,y_max])*img.size[1],1)[0]
+  img = img.transform(img.size, Image.AFFINE, (1, 0, -x, 0, 1, -y))
+  x_min, y_min, x_max, y_max = x_min+x/img.size[0], y_min+y/img.size[1], x_max+x/img.size[0], y_max+y/img.size[1]
+  return img, [x_min, y_min, x_max, y_max]
+
+
+def augment_dataset(csvfilename, increaseby=3, seed=42):
+  """Augment the dataset
+  """
+
+  def augment(img, box, filename, extension, basename, ds_augmented, seed, increaseby):
+    [x_min, y_min, x_max, y_max] = box
+    for i in range(increaseby):
+      filename_aug = filename + f"_{basename}_sol_{i}_" + "." + extension
+      rnd_solarize(img.copy(), seed).save(filename_aug)
+      ds_augmented += f"{r[0]},{filename_aug},{r[2]},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,\n"
+      
+      filename_aug = filename + f"_{basename}_bright_{i}_" + "." + extension
+      rnd_brightness(img.copy(), seed).save(filename_aug)
+      ds_augmented += f"{r[0]},{filename_aug},{r[2]},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,\n"
+
+  with open(csvfilename,"r") as file:
+    ds = file.read()
+
+  ds_augmented = ""
+  for i,l in enumerate(ds.splitlines()):
+    print(f"Augmenting annotation {i+1}...")
+    r = l.split(',')
+
+    extension = r[1].split(".")[-1]
+    filename = r[1][:-(len(extension)+1)]
+    img_orig = Image.open(r[1])
+    box = [float(fi) for fi in [r[3], r[4], r[7], r[8]]]
+
+    img, [x_min, y_min, x_max, y_max] = flip(img_orig.copy(), box)
+    filename_aug = filename + "_flip_" + "." + extension
+    img.save(filename_aug)
+    ds_augmented += f"{r[0]},{filename_aug},{r[2]},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,\n"
+    augment(img, [x_min, y_min, x_max, y_max], filename, extension, "flip", ds_augmented, seed+i, increaseby)
+
+    img, [x_min, y_min, x_max, y_max] = mirror(img_orig.copy(), box)
+    filename_aug = filename + "_mirror_" + "." + extension
+    img.save(filename_aug)
+    ds_augmented += f"{r[0]},{filename_aug},{r[2]},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,\n"
+    augment(img, [x_min, y_min, x_max, y_max], filename, extension, "mirror", ds_augmented, seed+i, increaseby)
+
+    img, [x_min, y_min, x_max, y_max] = flip_mirror(img_orig.copy(), box)
+    filename_aug = filename + "_flip-mirror_" + "." + extension
+    img.save(filename_aug)
+    ds_augmented += f"{r[0]},{filename_aug},{r[2]},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,\n"
+    augment(img, [x_min, y_min, x_max, y_max], filename, extension, "flip-mirror", ds_augmented, seed+i, increaseby)
+
+    for ri in range(increaseby):
+      img, [x_min, y_min, x_max, y_max] = rnd_translate(img_orig.copy(), box, seed+i)
+      filename_aug = filename + f"_rnd_trans_{ri}_" + "." + extension
+      img.save(filename_aug)
+      ds_augmented += f"{r[0]},{filename_aug},{r[2]},{x_min:0.2f},{y_min:0.2f},,,{x_max:0.2f},{y_max:0.2f},,\n"
+      augment(img, [x_min, y_min, x_max, y_max], filename, extension, f"rnd_trans_{ri}", ds_augmented, seed+i, increaseby)
+
+  with open(csvfilename,"w") as file:
+    file.write(ds+ds_augmented)
