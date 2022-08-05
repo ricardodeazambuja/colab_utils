@@ -586,7 +586,7 @@ def videoGrabber(quality=0.8, size=(800,600), init_delay=100, showVideo=True):
   return videoContr
 
 
-def cocojson2modelmakercsv(cocojsonfilename, csvfilename):
+def cocojson2modelmakercsv(cocojsonfilename, csvfilename, img_dir=""):
   """Convert COCO json annotations saved using VGG Via Annotator into
   TFLite Model Maker CSV format
   https://www.robots.ox.ac.uk/~vgg/software/via/via.html
@@ -599,7 +599,10 @@ def cocojson2modelmakercsv(cocojsonfilename, csvfilename):
   for ann in annot['annotations']:
     label = annot['categories'][ann['category_id']-1]['name']
     img = annot['images'][ann['image_id']-1]
-    path = img['coco_url']
+    try:
+      path = img['coco_url']
+    except KeyError as ke:
+        path = img_dir + img['file_name']
     height = img['height']
     width = img['width']
     bbox = ann['bbox']
